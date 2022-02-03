@@ -16,10 +16,14 @@ headers = { 'User-Agent':'''
                                     Mozilla/5.0 (X11; Ubuntu;
                                     Linux x86_64;rv:54.0)
                                     Gecko/20100101 Firefox/54.0'''}
-ctx = ssl.create_default_context()
-baseUrl = 'https://www.rottentomatoes.com/api/private/v2.0/browse?'
+
+
 
 def _make_soup(url):
+    '''
+    Create BeautifulSoup instance for the webpage of the request.
+    url: string for webpage
+    '''
     try:
         r = requests.get(url, headers)
         soup = BeautifulSoup(r.content, 'html.parser')
@@ -28,6 +32,12 @@ def _make_soup(url):
     return soup
 
 def _writeMovFile(csv_file, csv_columns,rottenMovies):
+    '''
+    Creates file with parsed data
+    csv_file: Name of the file
+    csv_columns: Names for the columns to be parsed
+    rottenMovies: Dictionary with data parsed
+    '''
     if not path.exists(csv_file):
       with open(csv_file, 'w', newline='', encoding='utf-8') as csvfile:
           writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
@@ -41,10 +51,16 @@ def _writeMovFile(csv_file, csv_columns,rottenMovies):
             writer.writerow(data)
 
 def pull_movies(page, service, type, sort):
+    '''
+    Gets movies in a given page using rotten tomatoes api
+    page: int, number of the page to get movies
+    service: Service fiter (netflix to prime) amazon%3Bhbo_go%3Bitunes%3Bnetflix_iw%3Bvudu%3Bamazon_prime%3Bfandango_now
+    type: filter for type of movie getting "dvd-streaming-all - dvd-streaming-upcoming - top-dvd-streaming - dvd-streaming-new" 
+    sort: tomato (better critic review) -- release (by release date)
+    '''
+    baseUrl = 'https://www.rottentomatoes.com/api/private/v2.0/browse?'
+    ctx = ssl.create_default_context()
     rottenMovies = []
-    # sort=   tomato  -- release
-    # services=   amazon%3Bhbo_go%3Bitunes%3Bnetflix_iw%3Bvudu%3Bamazon_prime%3Bfandango_now
-    # type= dvd-streaming-all --- dvd-streaming-upcoming --- (top-dvd-streaming --- dvd-streaming-new; sort=popularity)
     if page == 1:
         rotten_movies = baseUrl + 'services=' + service + '&type=' + type_search + '&sortby=' + sort
     else:
@@ -68,8 +84,6 @@ def pull_movies(page, service, type, sort):
 
     json_movies = doc.read().decode("utf-8")
     y = json.loads(json_movies)
-    # print(y)
-    # quit()
     max_movies = y['counts']['count'] - 1
     if max_movies <= 0:
         return []
@@ -99,6 +113,11 @@ def _print_welcome():
     print ('-='*30  )
 
 def _get_movie_info(movie):
+    '''
+    Get info about a movie by parsing script that fills template page
+    void funtion
+    movie: Movie URL to parse
+    '''
     soup = _make_soup('https://www.rottentomatoes.com/'+movie[1])
     section = soup.find("script", attrs ={'id' : "score-details-json"}).string
     y = json.loads(section)
@@ -108,10 +127,6 @@ def _get_movie_info(movie):
     tomatometerCount = y['scoreboard']['tomatometerCount']
     rating = y['scoreboard']['rating']
     info = y['scoreboard']['info']
-    # if rating:
-    #     print(rating)
-    # else:    
-    #     print(y['scoreboard'])
     df.loc[df.id == int(movie[0]),'audienceScore'] = y['scoreboard']['audienceScore']
     df.loc[df.id == int(movie[0]),'criticScore'] = y['scoreboard']['tomatometerScore']
     df.loc[df.id == int(movie[0]),'audienceCount'] = y['scoreboard']['audienceCount']
@@ -155,11 +170,7 @@ if __name__ == "__main__":
 
             loop_continue = df.loc[df.id==int(movie[0]), 'audienceCount'].isna().values[0]
             audienceCount = df.loc[df.id==int(movie[0]), 'audienceCount']
-            # print(type(audienceCount))
-            # print(audienceCount.values)
-            # quit()
             if not loop_continue:
-                # print (movie)
                 print(f'{movie[1]} has {audienceCount.values[0]} audience ratings \n')
                 continue
             print(f'{i} ---- {movie[1]}')
