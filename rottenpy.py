@@ -27,6 +27,37 @@ class Rotten(object):
         
         self._build_session()
 
+    def _process_url(self,endpoint=None, next=None):
+        filters_p = []
+        if self.affiliates is not None and endpoint != 'movies_in_theaters':
+            affiliates = ','.join(self.affiliates)
+            affiliates_p = f"affiliates:{affiliates}"
+            filters_p.append(affiliates_p)
+        if self.genres is not None:
+            genres = ','.join(self.genres)
+            genres_p = f"genres:{genres}"
+            filters_p.append(genres_p)
+        if self.ratings is not None:
+            ratings = ','.join(self.ratings)
+            ratings_p = f"ratings:{ratings}"
+            filters_p.append(ratings_p)
+        
+        filters = '~'.join(filters_p)
+        # print(filters)
+
+        endpoint_p = "_".join(endpoint.split("_")[:3])
+        # print(endpoint_p)
+
+        if next is None and len(filters_p) > 0:
+            return f"{self.base_url}{endpoint_p}/{filters}?page=1"
+        elif len(filters_p)>0:
+            return f"{self.base_url}{endpoint_p}/{filters}?after={next}"
+        else:
+            return f"{self.base_url}{endpoint_p}"
+
+        # if next is None:
+        #     url = f"{self.base_url}{endpoint}/{affiliates_p}?page=1"
+        #     return url
 
     def _build_session(self):
         self._session = requests.Session()
@@ -41,31 +72,33 @@ class Rotten(object):
     
     def next(self, result):
         page_info = result.get("pageInfo")
-        endpoint = result.get("grid").get("id")
-        url = f"{self.base_url}{endpoint}"
+        endpoint = result.get("grid").get("id")  
 
-        if page_info.get("hasNextPage"):
-            end_cursor = page_info.get("endCursor")
-            next_url = f"{url}?after={end_cursor}"
-            return self._get(next_url)
-        else:
-            print("End reached")
-            return None
+        end_cursor = page_info.get("endCursor")
+        next_url = self._process_url(endpoint=endpoint, next=end_cursor)
+        return self._get(next_url)      
+
+        # if page_info.get("hasNextPage"):
+        #     # end_cursor = page_info.get("endCursor")
+        #     # next_url = self._process_url(endpoint=endpoint, next=end_cursor)
+        #     # return self._get(next_url)
+        # else:
+        #     print("End reached")
+        #     return None
         
     def movies_in_theaters(self):
-        url = f"{self.base_url}movies_in_theaters/"
+        url = self._process_url(endpoint="movies_in_theaters")
+        # print(url)
         return self._get(url)
     
     def movies_at_home(self):
-        url = f"{self.base_url}movies_at_home/"
+        # url = f"{self.base_url}movies_at_home/"
+        url = self._process_url(endpoint="movies_at_home")
+        print(url)
         return self._get(url)
     
-    def movies_coming_soon(self):
-        url = f"{self.base_url}movies_coming_soon/"
-        return self._get(url)
-    
-    def tv_series_browse(self):
-      url = f"{self.base_url}tv_series_browse/"
+    def tv_series(self):
+      url = self._process_url(endpoint="tv_series_browse")
       return self._get(url)
         
         
